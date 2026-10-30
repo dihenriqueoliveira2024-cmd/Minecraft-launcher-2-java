@@ -1,0 +1,54 @@
+name: Diagnostico
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gerar DIAGNOSTICO.md
+        run: |
+          OUT=DIAGNOSTICO.md
+          {
+            echo "# Diagnostico do fork"
+            echo
+            echo "## Workflows em .github"
+            ls -la .github .github/workflows 2>&1
+            echo
+            echo "## Nomes e gatilhos dos workflows"
+            for f in .github/workflows/*; do
+              echo "--- $f"
+              grep -nE '^(name:|on:)|^  (push|pull_request|schedule|workflow_dispatch|release)|secrets\.' "$f" 2>&1
+            done
+            echo
+            echo "## .gitmodules"
+            cat .gitmodules 2>&1
+            echo
+            echo "## gradle-wrapper.properties"
+            cat gradle/wrapper/gradle-wrapper.properties 2>&1
+            echo
+            echo "## settings.gradle.kts"
+            cat settings.gradle.kts 2>&1
+            echo
+            echo "## gradle.properties (raiz)"
+            cat gradle.properties 2>&1
+            echo
+            echo "## ZalithLauncher/gradle.properties"
+            cat ZalithLauncher/gradle.properties 2>&1
+            echo
+            echo "## Linhas importantes de ZalithLauncher/build.gradle.kts"
+            grep -nEi 'ndk|jvm|java|compileSdk|targetSdk|minSdk|abi|signing|keystore|getenv|cmake|applicationId|versionName|namespace' ZalithLauncher/build.gradle.kts 2>&1
+            echo
+            echo "## Catalogo de versoes (AGP, Kotlin)"
+            grep -nEi '^(agp|kotlin|compose|ndk|java)' gradle/libs.versions.toml 2>&1
+          } > "$OUT"
+          wc -l "$OUT"
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add DIAGNOSTICO.md
+          git commit -m "Adiciona DIAGNOSTICO.md" || echo "nada a commitar"
+          git push
