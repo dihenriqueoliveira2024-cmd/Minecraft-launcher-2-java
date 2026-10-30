@@ -1,0 +1,40 @@
+name: Build Mine
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Aceitar licencas do SDK
+        run: yes | sdkmanager --licenses > /dev/null || true
+      - name: Compilar APK
+        env:
+          GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --stacktrace
+      - name: Reunir APKs
+        run: |
+          mkdir -p out
+          find . -name '*.apk' -path '*build/outputs*' -exec cp {} out/ \;
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: out/*.apk
+      - name: Publicar em Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "mine-build${{ github.run_number }}" out/*.apk --title "Build ${{ github.run_number }}" --notes "Build automatico de teste" --prerelease
